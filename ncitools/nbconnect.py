@@ -1,7 +1,4 @@
 import click
-import paramiko
-from pathlib import Path
-import json
 
 
 def warn(*args, **kwargs):
@@ -9,7 +6,11 @@ def warn(*args, **kwargs):
     print(*args, file=stderr, **kwargs)
 
 
-def load_nbserver_configs(sftp):
+def load_nbserver_configs(sftp, jupyter_runtime='.local/share/jupyter/runtime/'):
+    import json
+
+    if not jupyter_runtime.endswith('/'):
+        jupyter_runtime += '/'
 
     def parse(fname):
         with sftp.open(fname) as f:
@@ -17,55 +18,15 @@ def load_nbserver_configs(sftp):
             cfg['mtime'] = f.stat().st_mtime
             return cfg
 
-    p = '.local/share/jupyter/runtime/'
-    for f in sftp.listdir(p):
+    for f in sftp.listdir(jupyter_runtime):
         if f.startswith('nbserver-') and f.endswith('.json'):
-            yield parse(p + f)
+            yield parse(jupyter_runtime + f)
 
 
 def nbserver_all_configs(sftp):
     cfgs = list(load_nbserver_configs(sftp))
     cfgs.sort(key=lambda c: c.get('mtime', 0), reverse=True)
     return cfgs
-
-
-def get_ssh_config(name):
-    cfg = paramiko.SSHConfig()
-
-    try:
-        with open(str(Path.home()/".ssh/config")) as f:
-            cfg.parse(f)
-            return cfg.lookup(name)
-    except FileNotFoundError:
-        return {'hostname': name}
-
-
-def mk_ssh(cfg):
-    ssh = paramiko.SSHClient()
-    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
-    ssh_server = cfg['hostname']
-    ssh_user = cfg.get('user')
-
-    ssh.connect(ssh_server,
-                username=ssh_user)
-
-    return ssh
-
-
-def launch_tunnel(ssh_cfg, nb_cfg, lport):
-    from sshtunnel import SSHTunnelForwarder
-
-    ssh_user = ssh_cfg.get('user')
-    ssh_server = ssh_cfg.get('hostname')
-
-    tunnel = SSHTunnelForwarder(ssh_server,
-                                ssh_username=ssh_user,
-                                local_bind_address=('localhost', lport),
-                                remote_bind_address=(nb_cfg.get('hostname'),
-                                                     nb_cfg.get('port')))
-    tunnel.start()
-    return tunnel
 
 
 def mk_url(nb_cfg, lport):
@@ -93,12 +54,10 @@ def launch_url(url):
 @click.option('--user', help='SSH user name, if not given will be read from ~/.ssh/config')
 @click.option('--local-port', type=int, default=5566, help='Local port to use for ssh forwarding')
 def main(ssh_host, user=None, local_port=5566):
-    ssh_cfg = get_ssh_config(ssh_host)
+    from ._ssh import open_ssh, launch_tunnel
 
-    if user is not None:
-        ssh_cfg['user'] = user
+    ssh, ssh_cfg = open_ssh(ssh_host, user)
 
-    ssh = mk_ssh(ssh_cfg)
     cfgs = nbserver_all_configs(ssh.open_sftp())
 
     if len(cfgs) == 0:

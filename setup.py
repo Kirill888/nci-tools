@@ -14,6 +14,7 @@ setup(
     entry_points={
         'console_scripts': [
             'nbconnect = ncitools.nbconnect:main',
+            'vdi = ncitools._vdimain:_cli',
         ],
     }
 )
