@@ -13,18 +13,31 @@ def load_nbserver_configs(sftp, jupyter_runtime='.local/share/jupyter/runtime/')
         jupyter_runtime += '/'
 
     def parse(fname):
-        with sftp.open(fname) as f:
-            cfg = json.loads(f.read().decode('utf-8'))
-            cfg['mtime'] = f.stat().st_mtime
-            return cfg
+        try:
+            with sftp.open(fname) as f:
+                cfg = json.loads(f.read().decode('utf-8'))
+                cfg['mtime'] = f.stat().st_mtime
+                return cfg
+        except IOError:
+            return None
 
-    for f in sftp.listdir(jupyter_runtime):
+    try:
+        runtime_files = sftp.listdir(jupyter_runtime)
+    except IOError:
+        warn('No such folder: ' + jupyter_runtime)
+        runtime_files = []
+
+    for f in runtime_files:
         if f.startswith('nbserver-') and f.endswith('.json'):
-            yield parse(jupyter_runtime + f)
+            doc = parse(jupyter_runtime + f)
+            if doc is None:
+                warn('Failed to read ' + f)
+            else:
+                yield doc
 
 
-def nbserver_all_configs(sftp):
-    cfgs = list(load_nbserver_configs(sftp))
+def nbserver_all_configs(sftp, jupyter_runtime):
+    cfgs = list(load_nbserver_configs(sftp, jupyter_runtime))
     cfgs.sort(key=lambda c: c.get('mtime', 0), reverse=True)
     return cfgs
 
@@ -53,12 +66,16 @@ def launch_url(url):
 @click.argument('ssh_host', default='raijin.nci.org.au')
 @click.option('--user', help='SSH user name, if not given will be read from ~/.ssh/config')
 @click.option('--local-port', type=int, default=5566, help='Local port to use for ssh forwarding')
-def main(ssh_host, user=None, local_port=5566):
+@click.option('--runtime-dir', help='Jupyter runtime dir on a remote `jupyter --runtime-dir`')
+def main(ssh_host, user=None, local_port=5566, runtime_dir=None):
     from ._ssh import open_ssh, launch_tunnel
 
     ssh, ssh_cfg = open_ssh(ssh_host, user)
 
-    cfgs = nbserver_all_configs(ssh.open_sftp())
+    if runtime_dir is None:
+        runtime_dir = '.local/share/jupyter/runtime/'
+
+    cfgs = nbserver_all_configs(ssh.open_sftp(), runtime_dir)
 
     if len(cfgs) == 0:
         warn('# no configs')
