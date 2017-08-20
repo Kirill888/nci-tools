@@ -65,9 +65,9 @@ def launch_url(url):
 @click.command(name='nbconnect')
 @click.argument('ssh_host', default='raijin.nci.org.au')
 @click.option('--user', help='SSH user name, if not given will be read from ~/.ssh/config')
-@click.option('--local-port', type=int, default=5566, help='Local port to use for ssh forwarding')
+@click.option('--local-port', type=int, default=0, help='Local port to use for ssh forwarding')
 @click.option('--runtime-dir', help='Jupyter runtime dir on a remote `jupyter --runtime-dir`')
-def main(ssh_host, user=None, local_port=5566, runtime_dir=None):
+def main(ssh_host, user=None, local_port=0, runtime_dir=None):
     from ._ssh import open_ssh, launch_tunnel
 
     ssh, ssh_cfg = open_ssh(ssh_host, user)
@@ -82,13 +82,13 @@ def main(ssh_host, user=None, local_port=5566, runtime_dir=None):
         return 1
 
     nb_cfg = cfgs[0]
-    url = mk_url(nb_cfg, local_port)
 
     if len(cfgs) > 1:
         warn('# **WARNING**: found more than one config')
 
     tunnel = launch_tunnel(ssh_cfg, nb_cfg, local_port)
 
+    url = mk_url(nb_cfg, tunnel.local_bind_port)
     warn(url)
     launch_url(url)
 

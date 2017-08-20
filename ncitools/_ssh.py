@@ -37,7 +37,7 @@ def open_ssh(host, user=None):
     return mk_ssh(cfg), cfg
 
 
-def launch_tunnel(ssh_cfg, nb_cfg, lport):
+def launch_tunnel(ssh_cfg, nb_cfg, lport=0):
     from sshtunnel import SSHTunnelForwarder
 
     ssh_user = ssh_cfg.get('user')

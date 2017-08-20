@@ -1,4 +1,7 @@
 import click
+from collections import namedtuple
+
+Ctx = namedtuple('Ctx', ['ctl', 'ssh', 'ssh_cfg'])
 
 
 @click.group()
@@ -13,14 +16,14 @@ def cli(ctx, host, user):
 
     ctl = vdi_ctl(ssh)
 
-    ctx.obj.update(dict(ssh=ssh, ssh_cfg=ssh_cfg, ctl=ctl))
+    ctx.obj = Ctx(ssh=ssh, ssh_cfg=ssh_cfg, ctl=ctl)
 
 
 @cli.command('launch')
-@click.pass_context
+@click.pass_obj
 @click.option('--force', is_flag=True, help='Launch new session even if one is already running')
 def launch(ctx, force):
-    ctl = ctx.obj['ctl']
+    ctl = ctx.ctl
     jobs = ctl('list-avail', '--partition', 'main', flatten=False)
 
     if len(jobs) != 0 and not force:
@@ -34,9 +37,9 @@ def launch(ctx, force):
 
 
 @cli.command('terminate')
-@click.pass_context
+@click.pass_obj
 def terminate(ctx):
-    ctl = ctx.obj['ctl']
+    ctl = ctx.ctl
     jobs = ctl('list-avail', '--partition', 'main', flatten=False)
 
     for job in jobs:
@@ -46,9 +49,9 @@ def terminate(ctx):
 
 
 @cli.command('host')
-@click.pass_context
+@click.pass_obj
 def hostname(ctx):
-    ctl = ctx.obj['ctl']
+    ctl = ctx.ctl
 
     jobs = ctl('list-avail', '--partition', 'main', flatten=False)
 
