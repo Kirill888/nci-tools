@@ -70,12 +70,23 @@ def launch_url(url):
 def main(ssh_host, user=None, local_port=0, runtime_dir=None):
     from ._ssh import open_ssh, launch_tunnel
 
-    ssh, ssh_cfg = open_ssh(ssh_host, user)
-
     if runtime_dir is None:
         runtime_dir = '.local/share/jupyter/runtime/'
 
-    cfgs = nbserver_all_configs(ssh.open_sftp(), runtime_dir)
+    ssh, sftp = (None, None)
+
+    try:
+        ssh, ssh_cfg = open_ssh(ssh_host, user)
+        sftp = ssh.open_sftp()
+        cfgs = nbserver_all_configs(sftp, runtime_dir)
+    except:
+        warn('Failed to connect to "{}{}"'.format(user+'@' if user else '', ssh_host))
+        return 1
+    finally:
+        if sftp is not None:
+            sftp.close()
+        if ssh is not None:
+            ssh.close()
 
     if len(cfgs) == 0:
         warn('# no configs')
