@@ -8,11 +8,16 @@ Ctx = namedtuple('Ctx', ['ctl', 'ssh', 'ssh_cfg'])
 @click.pass_context
 @click.option('--host', default='vdi.nci.org.au')
 @click.option('--user', help='SSH user name, if not given will be read from ~/.ssh/config')
-def cli(ctx, host, user):
+@click.option('--ask', is_flag=True, help='Ask for ssh password')
+def cli(ctx, host, user, ask):
     from ._ssh import open_ssh
     from .vdi import vdi_ctl
 
-    ssh, ssh_cfg = open_ssh(host, user)
+    try:
+        ssh, ssh_cfg = open_ssh(host, user, ask_password=ask)
+    except:
+        click.echo('Failed to connect to "{}{}"'.format(user+'@' if user else '', host))
+        ctx.exit()
 
     ctl = vdi_ctl(ssh)
 
