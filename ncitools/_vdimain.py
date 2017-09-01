@@ -71,6 +71,37 @@ def hostname(ctx):
     return 0
 
 
+@cli.command('nbconnect')
+@click.option('--local-port', type=int, default=0, help='Local port to use for ssh forwarding')
+@click.option('--runtime-dir', help='Jupyter runtime dir on a remote `jupyter --runtime-dir`')
+@click.pass_obj
+def nbconnect(ctx, local_port=0, runtime_dir=None):
+    from ._ssh import mk_ssh
+    from .nbconnect import run_nb_tunnel
+
+    ctl = ctx.ctl
+    ssh_cfg = ctx.ssh_cfg
+
+    jobs = ctl('list-avail', '--partition', 'main', flatten=False)
+
+    if len(jobs) == 0:
+        click.echo('No jobs running', err=True)
+        return 1
+
+    for job in jobs:
+        host = ctl('get-host', '--jobid', job['id']).get('host')
+        click.echo(host)
+
+        ssh_cfg['hostname'] = host
+        try:
+            ssh = mk_ssh(ssh_cfg)
+        except:
+            click.echo('Failed to connect to {}'.format(host))
+            return 1
+
+        return run_nb_tunnel(ssh, ssh_cfg, runtime_dir=runtime_dir, local_port=local_port)
+
+
 def _cli():
     cli(obj={})
 

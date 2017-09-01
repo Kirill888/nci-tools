@@ -21,12 +21,12 @@ Currently supports:
 
 - Launching/terminating sessions on VDI
 - Finding out hostname of a current job
+- Connecting to jupyter notebook on vdi
 
 TODO:
 
 - vnc tunnel setup
 - notebook launching
-- notebook tunnel setup
 
 ## Installing
 

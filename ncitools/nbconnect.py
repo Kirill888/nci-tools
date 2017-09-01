@@ -46,37 +46,29 @@ def mk_url(nb_cfg, lport):
     return 'http://localhost:{lport}{base_url}?token={token}'.format(lport=lport, **nb_cfg)
 
 
-@click.command(name='nbconnect')
-@click.argument('ssh_host', default='raijin.nci.org.au')
-@click.option('--user', help='SSH user name, if not given will be read from ~/.ssh/config')
-@click.option('--local-port', type=int, default=0, help='Local port to use for ssh forwarding')
-@click.option('--runtime-dir', help='Jupyter runtime dir on a remote `jupyter --runtime-dir`')
-@click.option('--ask', is_flag=True, help='Ask for ssh password')
-def main(ssh_host, user=None, local_port=0, runtime_dir=None, ask=False):
-    from ._ssh import open_ssh, launch_tunnel
-    import sys
+def run_nb_tunnel(ssh, ssh_cfg, local_port=0, runtime_dir=None):
+    from ._ssh import launch_tunnel
+
+    sftp = None
+    cfgs = []
 
     if runtime_dir is None:
         runtime_dir = '.local/share/jupyter/runtime/'
 
-    ssh, sftp = (None, None)
-
     try:
-        ssh, ssh_cfg = open_ssh(ssh_host, user, ask_password=ask)
         sftp = ssh.open_sftp()
         cfgs = nbserver_all_configs(sftp, runtime_dir)
     except:
-        warn('Failed to connect to "{}{}"'.format(user+'@' if user else '', ssh_host))
         return 1
     finally:
         if sftp is not None:
             sftp.close()
-        if ssh is not None:
-            ssh.close()
+
+        ssh.close()
 
     if len(cfgs) == 0:
         warn('# no configs')
-        return 1
+        return 2
 
     nb_cfg = cfgs[0]
 
@@ -108,8 +100,7 @@ r - restart tunnel
 
         if k == 'q':
             click.echo('Quitting')
-            tunnel.stop()
-            sys.exit(0)
+            break
         elif k == 'o':
             relaunch()
         elif k == 'r':
@@ -123,7 +114,26 @@ r - restart tunnel
         else:
             pass
 
+    tunnel.stop()
     return 0
+
+
+@click.command(name='nbconnect')
+@click.argument('ssh_host', default='raijin.nci.org.au')
+@click.option('--user', help='SSH user name, if not given will be read from ~/.ssh/config')
+@click.option('--local-port', type=int, default=0, help='Local port to use for ssh forwarding')
+@click.option('--runtime-dir', help='Jupyter runtime dir on a remote `jupyter --runtime-dir`')
+@click.option('--ask', is_flag=True, help='Ask for ssh password')
+def main(ssh_host, user=None, local_port=0, runtime_dir=None, ask=False):
+    from ._ssh import open_ssh
+
+    try:
+        ssh, ssh_cfg = open_ssh(ssh_host, user, ask_password=ask)
+    except:
+        warn('Failed to connect to "{}{}"'.format(user+'@' if user else '', ssh_host))
+        return 1
+
+    return run_nb_tunnel(ssh, ssh_cfg, runtime_dir=runtime_dir, local_port=local_port)
 
 
 if __name__ == '__main__':
