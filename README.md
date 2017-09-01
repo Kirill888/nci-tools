@@ -28,3 +28,29 @@ TODO:
 - notebook launching
 - notebook tunnel setup
 
+## Launch notebook
+
+Example launch script for a jupyter notebook.
+
+```bash
+#!/bin/bash
+
+#PBS -N notebook
+#PBS -l ncpus=1
+#PBS -l mem=2G
+#PBS -l walltime=8:00:00 
+
+#PBS -l wd
+#PBS -o logs/stdout.txt
+#PBS -e logs/stderr.txt
+
+module use '/g/data/v10/public/modules/modulefiles'
+module load agdc-py3-prod
+
+#pick random port number
+port=$(shuf -n 1 -i 8300-8400)
+
+exec jupyter-notebook --no-browser --ip "${HOSTNAME}" --port "${port}"
+```
+
+Probably want to tweak `#PBS -l mem=` parameter depending on what you doing.
