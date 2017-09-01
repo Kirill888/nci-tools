@@ -6,7 +6,7 @@ Ctx = namedtuple('Ctx', ['ctl', 'ssh', 'ssh_cfg'])
 
 @click.group()
 @click.pass_context
-@click.option('--host', default='vdi.nci.org.au')
+@click.option('--host', default='vdi.nci.org.au', help='Customize vdi login node')
 @click.option('--user', help='SSH user name, if not given will be read from ~/.ssh/config')
 @click.option('--ask', is_flag=True, help='Ask for ssh password')
 def cli(ctx, host, user, ask):
@@ -90,8 +90,6 @@ def nbconnect(ctx, local_port=0, runtime_dir=None):
 
     for job in jobs:
         host = ctl('get-host', '--jobid', job['id']).get('host')
-        click.echo(host)
-
         ssh_cfg['hostname'] = host
         try:
             ssh = mk_ssh(ssh_cfg)

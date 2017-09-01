@@ -6,6 +6,16 @@ def warn(*args, **kwargs):
     print(*args, file=stderr, **kwargs)
 
 
+def check_connection(url):
+    from urllib.request import urlopen
+
+    try:
+        with urlopen(url) as f:
+            return len(f.read()) > 0
+    except IOError:
+        return False
+
+
 def load_nbserver_configs(sftp, jupyter_runtime='.local/share/jupyter/runtime/'):
     import json
 
@@ -33,6 +43,7 @@ def load_nbserver_configs(sftp, jupyter_runtime='.local/share/jupyter/runtime/')
             if doc is None:
                 warn('Failed to read ' + f)
             else:
+                doc['_file'] = jupyter_runtime + f
                 yield doc
 
 
@@ -46,11 +57,16 @@ def mk_url(nb_cfg, lport):
     return 'http://localhost:{lport}{base_url}?token={token}'.format(lport=lport, **nb_cfg)
 
 
-def run_nb_tunnel(ssh, ssh_cfg, local_port=0, runtime_dir=None):
+def run_nb_tunnel(ssh, ssh_cfg, local_port=0, runtime_dir=None, auto_clean=False):
     from ._ssh import launch_tunnel
 
     sftp = None
     cfgs = []
+
+    def cleanup_ssh():
+        if sftp is not None:
+            sftp.close()
+        ssh.close()
 
     if runtime_dir is None:
         runtime_dir = '.local/share/jupyter/runtime/'
@@ -59,25 +75,38 @@ def run_nb_tunnel(ssh, ssh_cfg, local_port=0, runtime_dir=None):
         sftp = ssh.open_sftp()
         cfgs = nbserver_all_configs(sftp, runtime_dir)
     except:
+        cleanup_ssh()
         return 1
-    finally:
-        if sftp is not None:
-            sftp.close()
-
-        ssh.close()
 
     if len(cfgs) == 0:
-        warn('# no configs')
+        warn('No active notebooks were found!')
         return 2
 
-    nb_cfg = cfgs[0]
+    tunnel = None
+    for nb_cfg in cfgs:
+        tunnel = launch_tunnel(ssh_cfg, nb_cfg, local_port)
+        url = mk_url(nb_cfg, tunnel.local_bind_port)
+        if check_connection(url):
+            break
 
-    if len(cfgs) > 1:
-        warn('# **WARNING**: found more than one config')
+        nb_file_path = nb_cfg.get('_file')
+        warn('Notebook {} is probably no more'.format(nb_cfg.get('url')))
+        tunnel.stop()
+        tunnel = None
 
-    tunnel = launch_tunnel(ssh_cfg, nb_cfg, local_port)
+        if auto_clean or click.confirm('Cleanup remote config file: {}'.format(nb_file_path), default=True):
+            try:
+                sftp.remove(nb_file_path)
+            except IOError as e:
+                if not auto_clean:
+                    warn('Failed: ' + repr(e))
 
-    url = mk_url(nb_cfg, tunnel.local_bind_port)
+    cleanup_ssh()  # close sftp
+
+    if tunnel is None:
+        warn('No active notebooks were found!')
+        return 3
+
     warn(url)
     click.launch(url)
 
