@@ -102,6 +102,10 @@ r - restart tunnel
 
     while True:
         k = click.getchar()
+
+        if type(k) is bytes:
+            k = k.decode('utf-8')
+
         if k == 'q':
             click.echo('Quiting')
             tunnel.stop()
