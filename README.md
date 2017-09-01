@@ -28,6 +28,41 @@ TODO:
 - notebook launching
 - notebook tunnel setup
 
+## Installing
+
+Using pip
+
+```
+git clone https://github.com/Kirill888/nci-tools.git
+cd nci-tools
+pip install .
+```
+
+If using `conda` make sure to activate your environment of choice.
+
+## SSH Authentication
+
+It is recommended to use ssh key-based authentication in conjunction with
+*ssh-agent* for managing encrypted keys. However if you don't have this set up,
+you can still connect using password based authentication, just supply `--ask`
+command line option, you will be asked to enter password (this works for both
+password based authentication and for encrypted ssh keys if you don't use ssh
+agent).
+
+On windows [Putty Authentication Agent](https://winscp.net/eng/docs/ui_pageant)
+is consulted for public keys.
+
+You can supply user name on a command line, but it's probably best to put into
+your ssh configuration file `$HOME/.ssh/config` like so
+
+```
+Host raijin.nci.org.au
+User your-nci-user-name
+
+Host vdi.nci.org.au
+User your-nci-user-name
+```
+
 ## Launch notebook
 
 Example launch script for a jupyter notebook.
