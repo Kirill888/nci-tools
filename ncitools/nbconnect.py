@@ -107,7 +107,7 @@ r - restart tunnel
             k = k.decode('utf-8')
 
         if k == 'q':
-            click.echo('Quiting')
+            click.echo('Quitting')
             tunnel.stop()
             sys.exit(0)
         elif k == 'o':
