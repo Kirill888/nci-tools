@@ -1,6 +1,6 @@
 # NCI tools
 
-Collection of command line tools for interacting with NCI compute nodes (http://nci.org.au)
+Collection of command line tools for interacting with [NCI](http://nci.org.au) compute nodes.
 
 ## nbconnect
 
@@ -14,7 +14,7 @@ Connect to a jupyter notebook server over ssh tunnel. Not NCI specific.
 
 ## vdi
 
-Lighter version of Strudel (https://cvl.massive.org.au/launcher_files/stable/)
+Lighter version of [Strudel](https://cvl.massive.org.au/launcher_files/stable/)
 for connecting to vdi nodes, probably very much NCI specific. Still incomplete.
 
 Currently supports:
@@ -26,7 +26,6 @@ Currently supports:
 TODO:
 
 - vnc tunnel setup
-- notebook launching
 
 ## Installing
 
@@ -46,10 +45,10 @@ It is recommended to use ssh key-based authentication in conjunction with
 *ssh-agent* for managing encrypted keys. However if you don't have this set up,
 you can still connect using password based authentication, just supply `--ask`
 command line option, you will be asked to enter password (this works for both
-password based authentication and for encrypted ssh keys if you don't use ssh
-agent).
+password based authentication and for password protected ssh keys if you don't
+use ssh agent).
 
-On windows [Putty Authentication Agent](https://winscp.net/eng/docs/ui_pageant)
+On Windows [Putty Authentication Agent](https://winscp.net/eng/docs/ui_pageant)
 is consulted for public keys.
 
 You can supply user name on a command line, but it's probably best to put it
