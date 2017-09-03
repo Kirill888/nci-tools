@@ -52,8 +52,8 @@ agent).
 On windows [Putty Authentication Agent](https://winscp.net/eng/docs/ui_pageant)
 is consulted for public keys.
 
-You can supply user name on a command line, but it's probably best to put into
-your ssh configuration file `$HOME/.ssh/config` like so
+You can supply user name on a command line, but it's probably best to put it
+into your ssh configuration file `$HOME/.ssh/config` like so
 
 ```
 Host raijin.nci.org.au
@@ -63,29 +63,29 @@ Host vdi.nci.org.au
 User your-nci-user-name
 ```
 
-## Launch notebook
+## Launch notebook on PBS
 
-Example launch script for a jupyter notebook.
+There is an example launch script for a jupyter notebook in scripts
+folder [scripts/nb_launcher_qsub.sh](scripts/nb_launcher_qsub.sh). You probably
+want to tweak `#PBS -l mem=` parameter depending on what you are doing. Submit
+the job with `qsub` on raijin wait for it to start, then connect from your PC
+with `nbconnect raijin.nci.org.au`.
+
+
+## Autostart notebook server on VDI
+
+Let's configure vdi nodes to start jupyter notebook on startup. There is a
+script in `scripts` folder [setup_auto_start.sh](scripts/setup_auto_start.sh).
+After running the script above on VDI node you should be able to restart vdi job
+and connect to a running notebook server.
 
 ```bash
-#!/bin/bash
-
-#PBS -N notebook
-#PBS -l ncpus=1
-#PBS -l mem=2G
-#PBS -l walltime=8:00:00 
-
-#PBS -l wd
-#PBS -o logs/stdout.txt
-#PBS -e logs/stderr.txt
-
-module use '/g/data/v10/public/modules/modulefiles'
-module load agdc-py3-prod
-
-#pick random port number
-port=$(shuf -n 1 -i 8300-8400)
-
-exec jupyter-notebook --no-browser --ip "${HOSTNAME}" --port "${port}"
+vdi terminate
+vdi launch
+sleep 5
+vdi nbconnect
 ```
 
-Probably want to tweak `#PBS -l mem=` parameter depending on what you doing.
+Note that when connecting to notebook on VDI you should use `vdi nbconnect`
+instead of just `nbconnect`, this is because there is an extra step of figuring
+out what host your VDI job is running on that `vdi nbconnect` does for you.
