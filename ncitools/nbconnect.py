@@ -6,11 +6,14 @@ def warn(*args, **kwargs):
     print(*args, file=stderr, **kwargs)
 
 
-def check_connection(url):
-    from urllib.request import urlopen
+def check_connection(url, direct=False):
+    from urllib.request import build_opener, ProxyHandler
+
+    # Force direct connection ignoring proxy settings if requested
+    oo = build_opener(ProxyHandler({})) if direct else build_opener()
 
     try:
-        with urlopen(url) as f:
+        with oo.open(url) as f:
             return len(f.read()) > 0
     except IOError:
         return False
@@ -86,7 +89,7 @@ def run_nb_tunnel(ssh, ssh_cfg, local_port=0, runtime_dir=None, auto_clean=False
     for nb_cfg in cfgs:
         tunnel = launch_tunnel(ssh_cfg, nb_cfg, local_port)
         url = mk_url(nb_cfg, tunnel.local_bind_port)
-        if check_connection(url):
+        if check_connection(url, direct=True):
             break
 
         nb_file_path = nb_cfg.get('_file')
