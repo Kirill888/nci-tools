@@ -20,12 +20,16 @@ def mk_ssh(cfg):
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
-    ssh_server = cfg['hostname']
-    ssh_user = cfg.get('user')
+    ssh_params = {
+        'hostname': cfg['hostname'],
+        'username': cfg.get('user'),
+        'password': cfg.get('password')
+    }
 
-    ssh.connect(ssh_server,
-                username=ssh_user,
-                password=cfg.get('password'))
+    if cfg.get('identityfile'):
+        ssh_params['key_filename'] = cfg.get('identityfile')[0]
+
+    ssh.connect(**ssh_params)
 
     return ssh
 
