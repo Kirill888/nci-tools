@@ -1,4 +1,5 @@
 import click
+import sys
 from collections import namedtuple
 
 Ctx = namedtuple('Ctx', ['ctl', 'ssh', 'ssh_cfg'])
@@ -8,13 +9,13 @@ Ctx = namedtuple('Ctx', ['ctl', 'ssh', 'ssh_cfg'])
 @click.pass_context
 @click.option('--host', default='vdi.nci.org.au', help='Customize vdi login node')
 @click.option('--user', help='SSH user name, if not given will be read from ~/.ssh/config')
-@click.option('--ask', is_flag=True, help='Ask for ssh password')
-def cli(ctx, host, user, ask):
+@click.option('--no-ask', is_flag=True, help='Do not ask for passwords')
+def cli(ctx, host, user, no_ask):
     from ._ssh import open_ssh
     from .vdi import vdi_ctl
 
     try:
-        ssh, ssh_cfg = open_ssh(host, user, ask_password=ask)
+        ssh, ssh_cfg = open_ssh(host, user, no_ask=no_ask)
     except:
         click.echo('Failed to connect to "{}{}"'.format(user+'@' if user else '', host))
         ctx.exit()
@@ -95,9 +96,9 @@ def nbconnect(ctx, local_port=0, runtime_dir=None):
             ssh = mk_ssh(ssh_cfg)
         except:
             click.echo('Failed to connect to {}'.format(host))
-            return 1
+            sys.exit(1)
 
-        return run_nb_tunnel(ssh, ssh_cfg, runtime_dir=runtime_dir, local_port=local_port)
+        sys.exit(run_nb_tunnel(ssh, ssh_cfg, runtime_dir=runtime_dir, local_port=local_port))
 
 
 def _cli():

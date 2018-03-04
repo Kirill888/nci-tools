@@ -1,3 +1,4 @@
+import sys
 import click
 
 
@@ -155,19 +156,18 @@ r - restart tunnel
 @click.option('--user', help='SSH user name, if not given will be read from ~/.ssh/config')
 @click.option('--local-port', type=int, default=0, help='Local port to use for ssh forwarding')
 @click.option('--runtime-dir', help='Jupyter runtime dir on a remote `jupyter --runtime-dir`')
-@click.option('--ask', is_flag=True, help='Ask for ssh password')
-def main(ssh_host, user=None, local_port=0, runtime_dir=None, ask=False):
+@click.option('--no-ask', is_flag=True, help='Do not ask for passwords')
+def main(ssh_host, user=None, local_port=0, runtime_dir=None, no_ask=False):
     from ._ssh import open_ssh
 
     try:
-        ssh, ssh_cfg = open_ssh(ssh_host, user, ask_password=ask)
+        ssh, ssh_cfg = open_ssh(ssh_host, user, no_ask=no_ask)
     except:
         warn('Failed to connect to "{}{}"'.format(user+'@' if user else '', ssh_host))
-        return 1
+        sys.exit(1)
 
-    return run_nb_tunnel(ssh, ssh_cfg, runtime_dir=runtime_dir, local_port=local_port)
+    sys.exit(run_nb_tunnel(ssh, ssh_cfg, runtime_dir=runtime_dir, local_port=local_port))
 
 
 if __name__ == '__main__':
-    import sys
     sys.exit(main())
