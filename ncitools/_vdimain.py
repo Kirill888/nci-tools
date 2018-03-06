@@ -1,6 +1,7 @@
 import click
 import sys
 from collections import namedtuple
+from random import randint
 
 Ctx = namedtuple('Ctx', ['ctl', 'ssh', 'ssh_cfg'])
 
@@ -78,6 +79,130 @@ def hostname(ctx):
         click.echo(host)
 
     return 0
+
+
+@cli.command('get-passwd')
+@click.pass_obj
+def get_passwd(ctx):
+    """ Print VNC password
+    """
+    ctl = ctx.ctl
+
+    password = ctl('get-passwd').get('passwd')
+
+    if password is None:
+        click.echo('Failed to query VNC password', err=True)
+        sys.exit(1)
+
+    click.echo(password)
+    return 0
+
+
+def collect_vnc_info(ctl, job_id, ssh_cfg):
+    from ._ssh import mk_ssh
+    from .vdi import vdi_ctl
+
+    cfg = dict(**ssh_cfg)
+    host = ctl('get-host', '--jobid', job_id).get('host')
+    passwd = ctl('get-passwd').get('passwd')
+    cfg['hostname'] = host
+
+    try:
+        client_ctl = vdi_ctl(mk_ssh(cfg))
+    except:
+        click.echo('Failed to connect to {}'.format(host), err=True)
+        sys.exit(2)
+
+    display = client_ctl('get-display-nbr').get('display')
+    if display is None:
+        click.echo('Failed to query display {}'.format(host), err=True)
+        sys.exit(3)
+
+    try:
+        display = int(display[1:])  # Parse `:2`
+    except ValueError:
+        click.echo('Failed to parse display number: "{}"'.format(display))
+        sys.exit(3)
+
+    return dict(host=host,
+                display=display,
+                port=display+5900,
+                passwd=passwd)
+
+
+def get_vnc_tunnel_cmd(ctx, job_id, local_port):
+    v_map = {True: 'yes', False: 'no'}
+
+    opts = dict(
+        PasswordAuthentication=False,
+        ChallengeResponseAuthentication=False,
+        KbdInteractiveAuthentication=False,
+        PubkeyAuthentication=True,
+        StrictHostKeyChecking=True,
+    )
+
+    args = ['-T'] + ['-o{}={}'.format(k, v_map.get(v, v))
+                     for k, v in opts.items()]
+
+    cmd = '/opt/vdi/bin/session-ctl --configver=20173552330 tunnel'.split(' ')
+
+    user = ctx.ssh_cfg.get('user')
+
+    if user is not None:
+        args.extend(['-l', user])
+
+    info = collect_vnc_info(ctx.ctl, job_id, ctx.ssh_cfg)
+    fwd_args = ['-L',
+                '{local_port}:127.0.0.1:{remote_port} {host}'.format(
+                    local_port=local_port,
+                    remote_port=info['port'],
+                    host=info['host'])]
+
+    return ['ssh'] + args + fwd_args + cmd
+
+
+@cli.command('display-nbr')
+@click.option('--as-port', is_flag=True, help='Print it as a port number of the VNC server')
+@click.pass_obj
+def display_nbr(ctx, as_port=False):
+    """ Print display number for active session (s)
+    """
+    ctl = ctx.ctl
+
+    jobs = ctl('list-avail', '--partition', 'main', flatten=False)
+
+    if len(jobs) == 0:
+        click.echo('No jobs running', err=True)
+        sys.exit(1)
+
+    for job in jobs:
+        info = collect_vnc_info(ctl, job['id'], ctx.ssh_cfg)
+
+        if as_port:
+            click.echo('%d' % info['port'])
+        else:
+            click.echo(':%d' % info['display'])
+
+
+@cli.command('vnc-tunnel-cmd')
+@click.option('--local-port', type=int, default=0, help='Local port to use for ssh forwarding')
+@click.pass_obj
+def vnc_tunnel_cmd(ctx, local_port=0):
+    """ Print port forwarding command
+    """
+    ctl = ctx.ctl
+
+    jobs = ctl('list-avail', '--partition', 'main', flatten=False)
+
+    if len(jobs) == 0:
+        click.echo('No jobs running', err=True)
+        sys.exit(1)
+
+    local_port = local_port or randint(10000, 65000)
+
+    for job in jobs:
+        cmd = get_vnc_tunnel_cmd(ctx, job['id'], local_port)
+        click.echo(' '.join(cmd))
 
 
 @cli.command('nbconnect')
