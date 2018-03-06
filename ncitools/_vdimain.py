@@ -11,6 +11,8 @@ Ctx = namedtuple('Ctx', ['ctl', 'ssh', 'ssh_cfg'])
 @click.option('--user', help='SSH user name, if not given will be read from ~/.ssh/config')
 @click.option('--no-ask', is_flag=True, help='Do not ask for passwords')
 def cli(ctx, host, user, no_ask):
+    """ Control and query info about VDI sessions
+    """
     from ._ssh import open_ssh
     from .vdi import vdi_ctl
 
@@ -29,12 +31,14 @@ def cli(ctx, host, user, no_ask):
 @click.pass_obj
 @click.option('--force', is_flag=True, help='Launch new session even if one is already running')
 def launch(ctx, force):
+    """ Launch session if not running
+    """
     ctl = ctx.ctl
     jobs = ctl('list-avail', '--partition', 'main', flatten=False)
 
     if len(jobs) != 0 and not force:
         click.echo('Job already running', err=True)
-        return 1
+        sys.exit(1)
 
     job = ctl('launch', '--partition', 'main')
     click.echo(job.get('id'))
@@ -45,6 +49,8 @@ def launch(ctx, force):
 @cli.command('terminate')
 @click.pass_obj
 def terminate(ctx):
+    """ Shutdown session (all sessions actually)
+    """
     ctl = ctx.ctl
     jobs = ctl('list-avail', '--partition', 'main', flatten=False)
 
@@ -57,13 +63,15 @@ def terminate(ctx):
 @cli.command('host')
 @click.pass_obj
 def hostname(ctx):
+    """ Print hostname for every active session
+    """
     ctl = ctx.ctl
 
     jobs = ctl('list-avail', '--partition', 'main', flatten=False)
 
     if len(jobs) == 0:
         click.echo('No jobs running', err=True)
-        return 1
+        sys.exit(1)
 
     for job in jobs:
         host = ctl('get-host', '--jobid', job['id']).get('host')
@@ -77,6 +85,8 @@ def hostname(ctx):
 @click.option('--runtime-dir', help='Jupyter runtime dir on a remote `jupyter --runtime-dir`')
 @click.pass_obj
 def nbconnect(ctx, local_port=0, runtime_dir=None):
+    """ Connect to notebook on VDI
+    """
     from ._ssh import mk_ssh
     from .nbconnect import run_nb_tunnel
 
@@ -87,7 +97,7 @@ def nbconnect(ctx, local_port=0, runtime_dir=None):
 
     if len(jobs) == 0:
         click.echo('No jobs running', err=True)
-        return 1
+        sys.exit(1)
 
     for job in jobs:
         host = ctl('get-host', '--jobid', job['id']).get('host')
@@ -96,7 +106,7 @@ def nbconnect(ctx, local_port=0, runtime_dir=None):
             ssh = mk_ssh(ssh_cfg)
         except:
             click.echo('Failed to connect to {}'.format(host))
-            sys.exit(1)
+            sys.exit(2)
 
         sys.exit(run_nb_tunnel(ssh, ssh_cfg, runtime_dir=runtime_dir, local_port=local_port))
 
