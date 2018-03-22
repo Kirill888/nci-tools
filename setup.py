@@ -9,6 +9,7 @@ setup(
     author_email='kirill.kouzoubov@ga.gov.au',
     description='Tools for working with NCI',
     install_requires=['click', 'paramiko', 'sshtunnel'],
+    python_requires='>=3.5',
     setup_requires=[],
     tests_require=[],
     entry_points={
