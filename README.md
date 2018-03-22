@@ -29,7 +29,15 @@ TODO:
 
 ## Installing
 
-Using pip
+Requires python 3.5 or higher, also need to have `pip` installed.
+
+```
+pip install git+https://github.com/Kirill888/nci-tools.git
+```
+
+On Ubuntu might have to use `sudo pip3` instead of just `pip`, to install without `sudo` and without virtual env use `pip3 install --user ...`. To get `pip3` on Ubuntu do `sudo apt-get install -y python3-pip`
+
+Alternatively clone then install:
 
 ```
 git clone https://github.com/Kirill888/nci-tools.git
